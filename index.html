@@ -1,0 +1,746 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>WTP Price Optimizer</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+    <style>
+        :root {
+            --bg: #0f172a;
+            --surface: #1e293b;
+            --surface2: #334155;
+            --border: #475569;
+            --text: #e2e8f0;
+            --muted: #94a3b8;
+            --accent: #3b82f6;
+            --accent2: #8b5cf6;
+            --green: #10b981;
+            --red: #ef4444;
+            --orange: #f59e0b;
+            --pink: #ec4899;
+        }
+        * { margin:0; padding:0; box-sizing:border-box; }
+        body {
+            font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            min-height: 100vh;
+        }
+        header {
+            background: linear-gradient(135deg, #1e3a5f 0%, #0f172a 100%);
+            border-bottom: 1px solid var(--border);
+            padding: 1.5rem 2rem;
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+        }
+        header h1 {
+            font-size: 1.5rem;
+            font-weight: 700;
+            background: linear-gradient(90deg, var(--accent), var(--accent2));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+        header p { color: var(--muted); font-size: 0.85rem; }
+        .container { max-width: 1400px; margin: 0 auto; padding: 1.5rem; }
+        .grid { display: grid; grid-template-columns: 340px 1fr; gap: 1.5rem; }
+        @media (max-width: 900px) { .grid { grid-template-columns: 1fr; } }
+
+        /* Panels */
+        .panel {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 1.25rem;
+        }
+        .panel h2 {
+            font-size: 0.95rem;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            color: var(--accent);
+            margin-bottom: 1rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+        .panel h3 {
+            font-size: 0.85rem;
+            color: var(--muted);
+            margin: 1rem 0 0.5rem;
+            border-top: 1px solid var(--surface2);
+            padding-top: 0.75rem;
+        }
+
+        /* Form */
+        label {
+            display: block;
+            font-size: 0.8rem;
+            color: var(--muted);
+            margin-bottom: 0.25rem;
+            font-weight: 500;
+        }
+        input, select {
+            width: 100%;
+            background: var(--bg);
+            border: 1px solid var(--border);
+            color: var(--text);
+            border-radius: 8px;
+            padding: 0.5rem 0.75rem;
+            font-size: 0.9rem;
+            margin-bottom: 0.75rem;
+            transition: border-color 0.2s;
+        }
+        input:focus, select:focus {
+            outline: none;
+            border-color: var(--accent);
+        }
+        .row2 { display: grid; grid-template-columns: 1fr 1fr; gap: 0.5rem; }
+        .row3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 0.5rem; }
+
+        button {
+            background: linear-gradient(135deg, var(--accent), var(--accent2));
+            color: white;
+            border: none;
+            border-radius: 8px;
+            padding: 0.65rem 1.25rem;
+            font-size: 0.9rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: opacity 0.2s, transform 0.1s;
+            width: 100%;
+        }
+        button:hover { opacity: 0.9; }
+        button:active { transform: scale(0.98); }
+        .btn-secondary {
+            background: var(--surface2);
+            font-size: 0.8rem;
+            padding: 0.45rem 0.75rem;
+        }
+        .btn-danger { background: var(--red); font-size: 0.8rem; padding: 0.45rem 0.75rem; }
+        .btn-row { display: flex; gap: 0.5rem; margin-top: 0.5rem; }
+
+        /* Segments */
+        .segment-card {
+            background: var(--bg);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 0.75rem;
+            margin-bottom: 0.75rem;
+            position: relative;
+        }
+        .segment-card .seg-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 0.5rem;
+        }
+        .seg-color {
+            width: 12px; height: 12px;
+            border-radius: 50%;
+            display: inline-block;
+            margin-right: 0.4rem;
+        }
+        .seg-name { font-weight: 600; font-size: 0.85rem; }
+        .remove-seg {
+            background: transparent;
+            border: none;
+            color: var(--red);
+            cursor: pointer;
+            font-size: 1.1rem;
+            width: auto;
+            padding: 0;
+        }
+
+        /* Results */
+        .results-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 1rem;
+            margin-bottom: 1rem;
+        }
+        .result-card {
+            background: var(--bg);
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            padding: 1rem;
+        }
+        .result-card .card-title {
+            font-size: 0.8rem;
+            color: var(--muted);
+            margin-bottom: 0.5rem;
+            display: flex;
+            align-items: center;
+            gap: 0.4rem;
+        }
+        .result-card .big-num {
+            font-size: 1.6rem;
+            font-weight: 700;
+        }
+        .result-card .sub { font-size: 0.8rem; color: var(--muted); margin-top: 0.25rem; }
+        .chart-wrap {
+            background: var(--bg);
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            padding: 1rem;
+            margin-bottom: 1rem;
+        }
+        .chart-wrap h3 {
+            font-size: 0.85rem;
+            color: var(--muted);
+            margin-bottom: 0.75rem;
+            border: none;
+            padding: 0;
+        }
+        .charts-row { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }
+        @media (max-width: 900px) { .charts-row { grid-template-columns: 1fr; } }
+
+        /* Table */
+        .table-wrap { overflow-x: auto; margin-top: 1rem; }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 0.8rem;
+        }
+        th {
+            background: var(--surface2);
+            padding: 0.5rem 0.75rem;
+            text-align: right;
+            color: var(--muted);
+            font-weight: 600;
+            white-space: nowrap;
+        }
+        th:first-child { text-align: left; }
+        td {
+            padding: 0.45rem 0.75rem;
+            text-align: right;
+            border-bottom: 1px solid var(--surface2);
+        }
+        td:first-child { text-align: left; font-weight: 500; }
+        tr:hover td { background: rgba(59,130,246,0.05); }
+        .highlight-row td { background: rgba(16,185,129,0.1); font-weight: 600; }
+
+        /* Comparison */
+        .comparison-bar {
+            display: flex;
+            gap: 1rem;
+            flex-wrap: wrap;
+            margin-bottom: 1rem;
+        }
+        .comp-item {
+            flex: 1;
+            min-width: 200px;
+            background: var(--bg);
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            padding: 1rem;
+            border-top: 3px solid var(--accent);
+        }
+        .comp-item .comp-label { font-size: 0.75rem; color: var(--muted); }
+        .comp-item .comp-value { font-size: 1.3rem; font-weight: 700; margin-top: 0.25rem; }
+        .comp-item .comp-sub { font-size: 0.75rem; color: var(--muted); }
+
+        .hidden { display: none; }
+        .info-text { font-size: 0.78rem; color: var(--muted); line-height: 1.5; margin-bottom: 0.75rem; }
+    </style>
+</head>
+<body>
+    <header>
+        <div>
+            <h1>WTP Price Optimizer</h1>
+            <p>Willingness-To-Pay analysis with monotonic spline interpolation & segmentation</p>
+        </div>
+    </header>
+
+    <div class="container">
+        <div class="grid">
+            <!-- LEFT SIDEBAR -->
+            <div>
+                <div class="panel">
+                    <h2>Global Parameters</h2>
+                    <p class="info-text">Enter price levels and survey answers. Comma-separated values, same length.</p>
+                    <label>Price Levels (p)</label>
+                    <input id="g-prices" value="5,7,9,11,13,15,17,19,21" placeholder="e.g. 5,7,9,11,13">
+                    <label>Potential Demand (D)</label>
+                    <input id="g-demand" type="number" value="10000" min="1">
+                    <label>Spline Resolution (m)</label>
+                    <input id="g-resolution" type="number" value="100" min="10" max="10000">
+
+                    <h3>Segments</h3>
+                    <p class="info-text">Add segments with different WTP answers and cost structures. At least one segment is required.</p>
+                    <div id="segments-container"></div>
+                    <button class="btn-secondary" onclick="addSegment()" style="margin-bottom:0.75rem">+ Add Segment</button>
+
+                    <button onclick="calculate()">Calculate & Compare</button>
+                </div>
+            </div>
+
+            <!-- MAIN CONTENT -->
+            <div id="results-area">
+                <div class="panel" style="text-align:center; padding: 3rem;">
+                    <p style="color:var(--muted); font-size:1.1rem;">Configure parameters and click <strong>Calculate & Compare</strong> to see results.</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+    // ========== PCHIP Interpolation ==========
+    function pchipSlopes(x, y) {
+        const n = x.length;
+        const d = new Array(n);
+        const h = [], delta = [];
+        for (let i = 0; i < n - 1; i++) {
+            h.push(x[i+1] - x[i]);
+            delta.push((y[i+1] - y[i]) / h[i]);
+        }
+        // Endpoints
+        d[0] = pchipEndSlope(h[0], h[1], delta[0], delta[1]);
+        d[n-1] = pchipEndSlope(h[n-2], h[n-3]||h[n-2], delta[n-2], delta[n-3]||delta[n-2]);
+        // Interior
+        for (let i = 1; i < n - 1; i++) {
+            if (delta[i-1] * delta[i] <= 0) {
+                d[i] = 0;
+            } else {
+                const w1 = 2*h[i] + h[i-1];
+                const w2 = h[i] + 2*h[i-1];
+                d[i] = (w1 + w2) / (w1/delta[i-1] + w2/delta[i]);
+            }
+        }
+        return { h, delta, d };
+    }
+
+    function pchipEndSlope(h1, h2, d1, d2) {
+        let s = ((2*h1 + h2)*d1 - h1*d2) / (h1 + h2);
+        if (Math.sign(s) !== Math.sign(d1)) s = 0;
+        else if (Math.sign(d1) !== Math.sign(d2) && Math.abs(s) > Math.abs(3*d1)) s = 3*d1;
+        return s;
+    }
+
+    function pchipEval(x, y, xq) {
+        const n = x.length;
+        if (n < 2) return xq.map(() => y[0] || 0);
+        const { h, delta, d } = pchipSlopes(x, y);
+        return xq.map(xv => {
+            let i = 0;
+            for (let j = 0; j < n - 1; j++) {
+                if (xv >= x[j]) i = j;
+            }
+            if (i >= n - 1) i = n - 2;
+            const t = (xv - x[i]) / h[i];
+            const t2 = t*t, t3 = t2*t;
+            const h00 = 2*t3 - 3*t2 + 1;
+            const h10 = t3 - 2*t2 + t;
+            const h01 = -2*t3 + 3*t2;
+            const h11 = t3 - t2;
+            return h00*y[i] + h10*h[i]*d[i] + h01*y[i+1] + h11*h[i]*d[i+1];
+        });
+    }
+
+    // ========== Segment Management ==========
+    const COLORS = ['#3b82f6','#10b981','#f59e0b','#ec4899','#8b5cf6','#ef4444','#06b6d4','#84cc16'];
+    let segmentCount = 0;
+
+    function addSegment(defaults) {
+        const idx = segmentCount++;
+        const color = COLORS[idx % COLORS.length];
+        const name = (defaults && defaults.name) || `Segment ${idx + 1}`;
+        const answers = (defaults && defaults.answers) || '6,3,10,0,1,2,5,0,1';
+        const vcu = (defaults && defaults.vcu) || '2';
+        const fc = (defaults && defaults.fc) || '3290';
+        const fcu = (defaults && defaults.fcu) || '';
+        const qobj = (defaults && defaults.qobj) || '';
+
+        const card = document.createElement('div');
+        card.className = 'segment-card';
+        card.id = `seg-${idx}`;
+        card.innerHTML = `
+            <div class="seg-header">
+                <span><span class="seg-color" style="background:${color}"></span><span class="seg-name" contenteditable="true">${name}</span></span>
+                <button class="remove-seg" onclick="removeSeg(${idx})">&times;</button>
+            </div>
+            <label>Answers (frequencies)</label>
+            <input class="seg-answers" value="${answers}" placeholder="Same length as price levels">
+            <div class="row2">
+                <div><label>VCu (unit var. cost)</label><input class="seg-vcu" type="number" step="0.01" value="${vcu}"></div>
+                <div><label>FC (fixed costs)</label><input class="seg-fc" type="number" step="0.01" value="${fc}"></div>
+            </div>
+            <div class="row2">
+                <div><label>FCu (unit fixed cost)</label><input class="seg-fcu" type="number" step="0.01" value="${fcu}" placeholder="Optional"></div>
+                <div><label>Q objective</label><input class="seg-qobj" type="number" step="1" value="${qobj}" placeholder="Optional"></div>
+            </div>
+        `;
+        document.getElementById('segments-container').appendChild(card);
+    }
+
+    function removeSeg(idx) {
+        const el = document.getElementById(`seg-${idx}`);
+        if (el) el.remove();
+        // Ensure at least one segment
+        if (document.querySelectorAll('.segment-card').length === 0) {
+            addSegment();
+        }
+    }
+
+    // Initialize with one segment
+    addSegment({ name: 'All Market', answers: '6,3,10,0,1,2,5,0,1', vcu: '2', fc: '3290', fcu: '', qobj: '6500' });
+
+    // ========== Calculation ==========
+    function parseCSV(str) {
+        return str.split(',').map(s => parseFloat(s.trim())).filter(n => !isNaN(n));
+    }
+
+    function calculate() {
+        const prices = parseCSV(document.getElementById('g-prices').value);
+        const D = parseFloat(document.getElementById('g-demand').value);
+        const m = parseInt(document.getElementById('g-resolution').value) || 100;
+
+        if (prices.length < 2) { alert('Need at least 2 price levels'); return; }
+
+        const segments = [];
+        document.querySelectorAll('.segment-card').forEach((card, i) => {
+            const name = card.querySelector('.seg-name').textContent.trim();
+            const answers = parseCSV(card.querySelector('.seg-answers').value);
+            const vcu = parseFloat(card.querySelector('.seg-vcu').value) || 0;
+            const fc = parseFloat(card.querySelector('.seg-fc').value) || 0;
+            const fcu = parseFloat(card.querySelector('.seg-fcu').value) || 0;
+            const qobj = parseFloat(card.querySelector('.seg-qobj').value) || 0;
+            const color = COLORS[i % COLORS.length];
+
+            if (answers.length !== prices.length) {
+                alert(`${name}: answers length (${answers.length}) must match price levels (${prices.length})`);
+                return;
+            }
+            segments.push({ name, answers, vcu, fc, fcu, qobj, color });
+        });
+
+        if (segments.length === 0) return;
+
+        const results = segments.map(seg => computeSegment(prices, seg, D, m));
+        renderResults(results, prices, m);
+    }
+
+    function computeSegment(prices, seg, D, m) {
+        const totalAns = seg.answers.reduce((a,b) => a+b, 0);
+        const freq = seg.answers.map(a => a / totalAns);
+
+        // Demand at each price point
+        const demandPoints = prices.map((_, i) => D * freq.slice(i).reduce((a,b) => a+b, 0));
+
+        // Spline
+        const xMin = Math.min(...prices), xMax = Math.max(...prices);
+        const xSpline = Array.from({length: m}, (_, i) => xMin + (xMax - xMin) * i / (m - 1));
+        const ySpline = pchipEval(prices, demandPoints, xSpline).map(v => Math.max(0, v));
+
+        // Effective unit cost
+        const totalCostUnit = seg.vcu + seg.fcu;
+
+        // Profit at each spline point
+        const profit = xSpline.map((p, i) => {
+            const q = ySpline[i];
+            return p * q - totalCostUnit * q - seg.fc;
+        });
+
+        // Revenue
+        const revenue = xSpline.map((p, i) => p * ySpline[i]);
+
+        // Find optimal
+        let maxProfit = -Infinity, optIdx = 0;
+        profit.forEach((pr, i) => { if (pr > maxProfit) { maxProfit = pr; optIdx = i; } });
+
+        const optPrice = xSpline[optIdx];
+        const optDemand = ySpline[optIdx];
+        const optRevenue = revenue[optIdx];
+        const optVC = totalCostUnit * optDemand;
+        const optMargin = optRevenue > 0 ? (maxProfit / optRevenue) : 0;
+
+        // FCu based on qObjective
+        const fcuCalc = seg.qobj > 0 ? seg.fc / seg.qobj : (optDemand > 0 ? seg.fc / optDemand : 0);
+
+        // Data at original price points
+        const tableData = prices.map((p, i) => {
+            const q = demandPoints[i];
+            const rev = p * q;
+            const vc = totalCostUnit * q;
+            const fcAlloc = fcuCalc * q;
+            const prof = rev - vc - fcAlloc;
+            const margin = rev > 0 ? prof / rev : 0;
+            return { price: p, demand: q, revenue: rev, vc, fcAlloc, profit: prof, margin, freq: freq[i] };
+        });
+
+        return {
+            ...seg,
+            D,
+            freq,
+            demandPoints,
+            xSpline, ySpline,
+            profit, revenue,
+            optPrice, optDemand, optRevenue, optProfit: maxProfit, optVC, optMargin,
+            fcuCalc,
+            tableData
+        };
+    }
+
+    // ========== Rendering ==========
+    function fmt(n, dec=0) {
+        return n.toLocaleString('en-US', { minimumFractionDigits: dec, maximumFractionDigits: dec });
+    }
+    function fmtPct(n) { return (n * 100).toFixed(1) + '%'; }
+    function fmtCur(n) { return '$' + fmt(n, 2); }
+
+    let charts = [];
+    function destroyCharts() { charts.forEach(c => c.destroy()); charts = []; }
+
+    function renderResults(results, prices, m) {
+        destroyCharts();
+        const area = document.getElementById('results-area');
+
+        let html = '';
+
+        // Comparison bar
+        if (results.length > 1) {
+            html += `<div class="panel" style="margin-bottom:1rem"><h2>Segment Comparison</h2><div class="comparison-bar">`;
+            results.forEach(r => {
+                html += `<div class="comp-item" style="border-top-color:${r.color}">
+                    <div class="comp-label">${r.name}</div>
+                    <div class="comp-value" style="color:${r.color}">${fmtCur(r.optPrice)}</div>
+                    <div class="comp-sub">Optimal Price</div>
+                    <div style="margin-top:0.5rem;font-size:0.85rem;">
+                        <div>Profit: <strong>${fmtCur(r.optProfit)}</strong></div>
+                        <div>Demand: <strong>${fmt(r.optDemand, 0)}</strong></div>
+                        <div>Revenue: <strong>${fmtCur(r.optRevenue)}</strong></div>
+                        <div>Margin: <strong>${fmtPct(r.optMargin)}</strong></div>
+                    </div>
+                </div>`;
+            });
+            html += `</div></div>`;
+        }
+
+        // Per-segment detail
+        results.forEach((r, si) => {
+            html += `<div class="panel" style="margin-bottom:1rem; border-left: 3px solid ${r.color};">`;
+            html += `<h2 style="color:${r.color}">${r.name}</h2>`;
+
+            // KPI cards
+            html += `<div class="results-grid">
+                <div class="result-card">
+                    <div class="card-title">Optimal Price</div>
+                    <div class="big-num" style="color:${r.color}">${fmtCur(r.optPrice)}</div>
+                </div>
+                <div class="result-card">
+                    <div class="card-title">Max Profit</div>
+                    <div class="big-num" style="color:var(--green)">${fmtCur(r.optProfit)}</div>
+                </div>
+                <div class="result-card">
+                    <div class="card-title">Demand at Opt. Price</div>
+                    <div class="big-num">${fmt(r.optDemand, 0)}</div>
+                    <div class="sub">of ${fmt(r.D, 0)} potential</div>
+                </div>
+                <div class="result-card">
+                    <div class="card-title">Revenue at Opt. Price</div>
+                    <div class="big-num">${fmtCur(r.optRevenue)}</div>
+                    <div class="sub">Margin: ${fmtPct(r.optMargin)}</div>
+                </div>
+                <div class="result-card">
+                    <div class="card-title">VCu</div>
+                    <div class="big-num">${fmtCur(r.vcu)}</div>
+                </div>
+                <div class="result-card">
+                    <div class="card-title">FC / FCu (calc.)</div>
+                    <div class="big-num">${fmtCur(r.fc)}</div>
+                    <div class="sub">FCu = ${fmtCur(r.fcuCalc)}</div>
+                </div>
+            </div>`;
+
+            // Charts
+            html += `<div class="charts-row">
+                <div class="chart-wrap"><h3>Demand Curve (Spline)</h3><canvas id="chart-demand-${si}"></canvas></div>
+                <div class="chart-wrap"><h3>Profit Function</h3><canvas id="chart-profit-${si}"></canvas></div>
+            </div>`;
+
+            // Table
+            html += `<div class="chart-wrap"><h3>Detailed Results at Price Points</h3><div class="table-wrap"><table>
+                <tr><th>Price</th><th>Freq.</th><th>Demand</th><th>Revenue</th><th>VC</th><th>FC alloc.</th><th>Profit</th><th>Margin</th></tr>`;
+            r.tableData.forEach(row => {
+                const isOpt = Math.abs(row.price - r.optPrice) < 0.01;
+                html += `<tr${isOpt ? ' class="highlight-row"' : ''}>
+                    <td>${fmtCur(row.price)}</td>
+                    <td>${fmtPct(row.freq)}</td>
+                    <td>${fmt(row.demand, 0)}</td>
+                    <td>${fmtCur(row.revenue)}</td>
+                    <td>${fmtCur(row.vc)}</td>
+                    <td>${fmtCur(row.fcAlloc)}</td>
+                    <td>${fmtCur(row.profit)}</td>
+                    <td>${fmtPct(row.margin)}</td>
+                </tr>`;
+            });
+            html += `</table></div></div>`;
+            html += `</div>`;
+        });
+
+        // Overlay comparison chart if multiple segments
+        if (results.length > 1) {
+            html += `<div class="panel" style="margin-bottom:1rem">
+                <h2>Overlay Comparison</h2>
+                <div class="charts-row">
+                    <div class="chart-wrap"><h3>All Demand Curves</h3><canvas id="chart-all-demand"></canvas></div>
+                    <div class="chart-wrap"><h3>All Profit Curves</h3><canvas id="chart-all-profit"></canvas></div>
+                </div>
+            </div>`;
+        }
+
+        area.innerHTML = html;
+
+        // Create charts
+        results.forEach((r, si) => {
+            createDemandChart(`chart-demand-${si}`, r);
+            createProfitChart(`chart-profit-${si}`, r);
+        });
+
+        if (results.length > 1) {
+            createOverlayChart('chart-all-demand', results, 'demand');
+            createOverlayChart('chart-all-profit', results, 'profit');
+        }
+    }
+
+    const chartDefaults = {
+        responsive: true,
+        plugins: {
+            legend: { labels: { color: '#94a3b8', font: { size: 11 } } },
+            tooltip: { mode: 'index', intersect: false }
+        },
+        scales: {
+            x: { ticks: { color: '#64748b' }, grid: { color: 'rgba(71,85,105,0.3)' } },
+            y: { ticks: { color: '#64748b' }, grid: { color: 'rgba(71,85,105,0.3)' } }
+        }
+    };
+
+    function createDemandChart(id, r) {
+        const ctx = document.getElementById(id).getContext('2d');
+        const labels = r.xSpline.map(v => v.toFixed(1));
+        const c = new Chart(ctx, {
+            type: 'line',
+            data: {
+                labels,
+                datasets: [
+                    {
+                        label: 'Demand (spline)',
+                        data: r.ySpline,
+                        borderColor: r.color,
+                        backgroundColor: r.color + '20',
+                        fill: true,
+                        tension: 0.4,
+                        pointRadius: 0,
+                        borderWidth: 2
+                    },
+                    {
+                        label: 'Data points',
+                        data: r.xSpline.map((xv, i) => {
+                            const pi = r.demandPoints.findIndex((_, j) => Math.abs(xv - parseCSV(document.getElementById('g-prices').value)[j]) < 0.05);
+                            return pi >= 0 ? r.demandPoints[pi] : null;
+                        }),
+                        borderColor: '#fff',
+                        backgroundColor: r.color,
+                        pointRadius: 5,
+                        pointStyle: 'circle',
+                        showLine: false
+                    }
+                ]
+            },
+            options: {
+                ...chartDefaults,
+                scales: {
+                    x: { ...chartDefaults.scales.x, title: { display: true, text: 'Price', color: '#94a3b8' },
+                        ticks: { ...chartDefaults.scales.x.ticks, maxTicksLimit: 10 } },
+                    y: { ...chartDefaults.scales.y, title: { display: true, text: 'Demand', color: '#94a3b8' } }
+                },
+                plugins: {
+                    ...chartDefaults.plugins,
+                    annotation: {
+                        annotations: {
+                            optLine: {
+                                type: 'line', xMin: r.optPrice.toFixed(1), xMax: r.optPrice.toFixed(1),
+                                borderColor: '#10b981', borderDash: [5,5], borderWidth: 1
+                            }
+                        }
+                    }
+                }
+            }
+        });
+        charts.push(c);
+    }
+
+    function createProfitChart(id, r) {
+        const ctx = document.getElementById(id).getContext('2d');
+        const labels = r.xSpline.map(v => v.toFixed(1));
+        const optIdx = r.profit.indexOf(Math.max(...r.profit));
+        const c = new Chart(ctx, {
+            type: 'line',
+            data: {
+                labels,
+                datasets: [
+                    {
+                        label: 'Profit',
+                        data: r.profit,
+                        borderColor: '#10b981',
+                        backgroundColor: '#10b98120',
+                        fill: true,
+                        tension: 0.4,
+                        pointRadius: r.profit.map((_, i) => i === optIdx ? 6 : 0),
+                        pointBackgroundColor: '#10b981',
+                        borderWidth: 2
+                    },
+                    {
+                        label: 'Revenue',
+                        data: r.revenue,
+                        borderColor: '#f59e0b',
+                        borderDash: [4,4],
+                        tension: 0.4,
+                        pointRadius: 0,
+                        borderWidth: 1.5,
+                        fill: false
+                    }
+                ]
+            },
+            options: {
+                ...chartDefaults,
+                scales: {
+                    x: { ...chartDefaults.scales.x, title: { display: true, text: 'Price', color: '#94a3b8' },
+                        ticks: { ...chartDefaults.scales.x.ticks, maxTicksLimit: 10 } },
+                    y: { ...chartDefaults.scales.y, title: { display: true, text: 'Amount ($)', color: '#94a3b8' } }
+                }
+            }
+        });
+        charts.push(c);
+    }
+
+    function createOverlayChart(id, results, type) {
+        const ctx = document.getElementById(id).getContext('2d');
+        const labels = results[0].xSpline.map(v => v.toFixed(1));
+        const datasets = results.map(r => ({
+            label: r.name,
+            data: type === 'demand' ? r.ySpline : r.profit,
+            borderColor: r.color,
+            backgroundColor: r.color + '15',
+            fill: false,
+            tension: 0.4,
+            pointRadius: 0,
+            borderWidth: 2
+        }));
+        const c = new Chart(ctx, {
+            type: 'line',
+            data: { labels, datasets },
+            options: {
+                ...chartDefaults,
+                scales: {
+                    x: { ...chartDefaults.scales.x, title: { display: true, text: 'Price', color: '#94a3b8' },
+                        ticks: { ...chartDefaults.scales.x.ticks, maxTicksLimit: 10 } },
+                    y: { ...chartDefaults.scales.y, title: { display: true, text: type === 'demand' ? 'Demand' : 'Profit ($)', color: '#94a3b8' } }
+                }
+            }
+        });
+        charts.push(c);
+    }
+    </script>
+</body>
+</html>
