@@ -126,6 +126,7 @@ function addStudy(name){
 
 function removeStudy(id){
     destroyCharts();
+    if(wtpCharts[id]){try{wtpCharts[id].destroy()}catch(e){} delete wtpCharts[id];}
     studies=studies.filter(s=>s.id!==id);
     document.getElementById(`study-${id}`)?.remove();
     document.getElementById('global-comparison').innerHTML='';
@@ -170,7 +171,7 @@ function renderStudyForm(id){
                 <label>Price Levels (comma-sep.)</label>
                 <input class="st-prices" value="2,2.5,3,3.5,4,4.5,5,5.5,6" onchange="updateSplit(${id})">
                 <label>All Market Answers</label>
-                <input class="st-answers" value="3,5,8,12,9,6,4,2,1">
+                <input class="st-answers" value="3,5,8,12,9,6,4,2,1" onchange="drawWTP(${id})">
                 <div class="r2">
                     <div><label>Demand (D)</label><input class="st-d" type="number" value="15000"></div>
                     <div><label>Resolution (m)</label><input class="st-m" type="number" value="100"></div>
@@ -184,6 +185,12 @@ function renderStudyForm(id){
                     <div><label>FCu</label><input class="st-fcu" type="number" step="0.01" placeholder="Opt."></div>
                     <div><label>Q objective</label><input class="st-qobj" type="number" step="1" value="10000" placeholder="Opt."></div>
                 </div>
+            </div>
+            <div class="panel">
+                <h2>WTP Distribution</h2>
+                <p class="info">Frequency of answers per price level. Use this to identify natural segment boundaries.</p>
+                <canvas class="wtp-chart" height="150"></canvas>
+                <button class="btn-2 btn-s" style="margin-top:.4rem" onclick="drawWTP(${id})">Refresh WTP Chart</button>
             </div>
             <div class="panel">
                 <h2>Auto Segmentation</h2>
@@ -210,6 +217,71 @@ function renderStudyForm(id){
 function getStudyEl(id){return document.getElementById(`study-${id}`)}
 function qS(id,sel){return getStudyEl(id)?.querySelector(sel)}
 
+// ===== WTP Distribution Chart =====
+let wtpCharts={};
+function drawWTP(id){
+    const el=getStudyEl(id);if(!el)return;
+    const prices=csv(el.querySelector('.st-prices').value);
+    const ans=csv(el.querySelector('.st-answers').value);
+    if(prices.length<2||ans.length!==prices.length)return;
+    const canvas=el.querySelector('.wtp-chart');if(!canvas)return;
+    if(wtpCharts[id]){try{wtpCharts[id].destroy()}catch(e){}}
+    const t=ans.reduce((a,b)=>a+b,0)||1;
+    const freq=ans.map(a=>((a/t)*100));
+    const cumR=prices.map((_,i)=>ans.slice(i).reduce((a,b)=>a+b,0)/t*100);
+    // find split index from select
+    const splitSel=el.querySelector('.st-split');
+    const si=splitSel?parseInt(splitSel.value):-1;
+    const barColors=prices.map((_,i)=>i<=si?'rgba(59,130,246,0.7)':'rgba(139,92,246,0.7)');
+    const borderColors=prices.map((_,i)=>i<=si?'#3b82f6':'#8b5cf6');
+    wtpCharts[id]=new Chart(canvas.getContext('2d'),{
+        type:'bar',
+        data:{
+            labels:prices.map(p=>'$'+p),
+            datasets:[
+                {label:'WTP Frequency (%)',data:freq,backgroundColor:barColors,borderColor:borderColors,borderWidth:1,order:2,yAxisID:'y'},
+                {label:'Cumulative WTP (%)',data:cumR,type:'line',borderColor:'#f59e0b',backgroundColor:'rgba(245,158,11,0.1)',fill:true,tension:.4,pointRadius:3,pointBackgroundColor:'#f59e0b',borderWidth:2,order:1,yAxisID:'y'}
+            ]
+        },
+        options:{
+            responsive:true,
+            plugins:{
+                legend:{labels:{color:'#94a3b8',font:{size:10}}},
+                tooltip:{mode:'index',intersect:false,callbacks:{
+                    afterBody:function(ctx){
+                        const i=ctx[0].dataIndex;
+                        return si>=0?((i<=si?'← Seg 1':'← Seg 2')):'';
+                    }
+                }},
+                annotation:si>=0?{annotations:{splitLine:{type:'line',xMin:si+0.5,xMax:si+0.5,borderColor:'#ef4444',borderWidth:2,borderDash:[6,3],label:{display:true,content:'Split',color:'#ef4444',font:{size:10},position:'start'}}}}:{}
+            },
+            scales:{
+                x:{ticks:{color:'#64748b'},grid:{color:'rgba(71,85,105,.3)'}},
+                y:{title:{display:true,text:'%',color:'#94a3b8'},ticks:{color:'#64748b'},grid:{color:'rgba(71,85,105,.3)'},min:0}
+            }
+        },
+        plugins:si>=0?[{id:'splitLine',afterDraw(chart){
+            const xScale=chart.scales.x;
+            const yScale=chart.scales.y;
+            const x=xScale.getPixelForValue(si)+((xScale.getPixelForValue(si+1)-xScale.getPixelForValue(si))/2);
+            const ctx=chart.ctx;
+            ctx.save();
+            ctx.beginPath();
+            ctx.setLineDash([6,3]);
+            ctx.strokeStyle='#ef4444';
+            ctx.lineWidth=2;
+            ctx.moveTo(x,yScale.top);
+            ctx.lineTo(x,yScale.bottom);
+            ctx.stroke();
+            ctx.fillStyle='#ef4444';
+            ctx.font='bold 10px sans-serif';
+            ctx.textAlign='center';
+            ctx.fillText('Split',x,yScale.top-4);
+            ctx.restore();
+        }}]:[]
+    });
+}
+
 function updateSplit(id){
     const el=getStudyEl(id);if(!el)return;
     const prices=csv(el.querySelector('.st-prices').value);
@@ -221,6 +293,8 @@ function updateSplit(id){
         sel.appendChild(o);
     }
     sel.selectedIndex=Math.floor((prices.length-1)/2);
+    sel.onchange=()=>drawWTP(id);
+    setTimeout(()=>drawWTP(id),50);
 }
 
 // ===== Auto Seg =====
