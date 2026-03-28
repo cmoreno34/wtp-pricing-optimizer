@@ -113,20 +113,22 @@ const cur=n=>'$'+fmt(n,2);
 const COL=['#3b82f6','#10b981','#f59e0b','#ec4899','#8b5cf6','#ef4444','#06b6d4','#84cc16','#a855f7','#14b8a6'];
 
 // ===== Studies =====
-let studies=[], activeTab=0, allCharts=[];
-function destroyCharts(){allCharts.forEach(c=>c.destroy());allCharts=[]}
+let studies=[], activeTab=0, allCharts=[], nextStudyId=0;
+function destroyCharts(){allCharts.forEach(c=>{try{c.destroy()}catch(e){}});allCharts=[]}
 
 function addStudy(name){
-    const id=studies.length;
-    studies.push({id,name:name||`Study ${id+1}`});
+    const id=nextStudyId++;
+    studies.push({id,name:name||`Study ${studies.length+1}`});
     rebuildTabs();
     switchTab(id);
     renderStudyForm(id);
 }
 
 function removeStudy(id){
+    destroyCharts();
     studies=studies.filter(s=>s.id!==id);
     document.getElementById(`study-${id}`)?.remove();
+    document.getElementById('global-comparison').innerHTML='';
     if(studies.length===0)addStudy();
     else{rebuildTabs();switchTab(studies[0].id)}
 }
@@ -166,21 +168,21 @@ function renderStudyForm(id){
                 <label>Study Name</label>
                 <input class="st-name" value="${studies.find(s=>s.id===id).name}" onchange="studies.find(s=>s.id===${id}).name=this.value;rebuildTabs()">
                 <label>Price Levels (comma-sep.)</label>
-                <input class="st-prices" value="5,7,9,11,13,15,17,19,21" onchange="updateSplit(${id})">
+                <input class="st-prices" value="2,2.5,3,3.5,4,4.5,5,5.5,6" onchange="updateSplit(${id})">
                 <label>All Market Answers</label>
-                <input class="st-answers" value="6,3,10,0,1,2,5,0,1">
+                <input class="st-answers" value="3,5,8,12,9,6,4,2,1">
                 <div class="r2">
-                    <div><label>Demand (D)</label><input class="st-d" type="number" value="10000"></div>
+                    <div><label>Demand (D)</label><input class="st-d" type="number" value="15000"></div>
                     <div><label>Resolution (m)</label><input class="st-m" type="number" value="100"></div>
                 </div>
                 <h3>Cost Parameters (All Market)</h3>
                 <div class="r2">
-                    <div><label>VCu</label><input class="st-vcu" type="number" step="0.01" value="2"></div>
-                    <div><label>FC</label><input class="st-fc" type="number" step="0.01" value="3290"></div>
+                    <div><label>VCu</label><input class="st-vcu" type="number" step="0.01" value="0.85"></div>
+                    <div><label>FC</label><input class="st-fc" type="number" step="0.01" value="8500"></div>
                 </div>
                 <div class="r2">
                     <div><label>FCu</label><input class="st-fcu" type="number" step="0.01" placeholder="Opt."></div>
-                    <div><label>Q objective</label><input class="st-qobj" type="number" step="1" value="6500" placeholder="Opt."></div>
+                    <div><label>Q objective</label><input class="st-qobj" type="number" step="1" value="10000" placeholder="Opt."></div>
                 </div>
             </div>
             <div class="panel">
@@ -305,6 +307,7 @@ function compute(segP,segA,D,m,vcu,fc,fcu,qobj){
 
 function calculateAll(){
     destroyCharts();
+    document.getElementById('global-comparison').innerHTML='';
     const globalResults=[];
 
     studies.forEach(st=>{
@@ -476,7 +479,7 @@ function mkOverlay(id,results,type){
 }
 
 // ===== Init =====
-addStudy('Wine Example');
+addStudy('Espresso');
 </script>
 </body>
 </html>
