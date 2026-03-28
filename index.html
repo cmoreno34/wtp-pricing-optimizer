@@ -228,7 +228,6 @@ function drawWTP(id){
     if(wtpCharts[id]){try{wtpCharts[id].destroy()}catch(e){}}
     const t=ans.reduce((a,b)=>a+b,0)||1;
     const freq=ans.map(a=>((a/t)*100));
-    const cumR=prices.map((_,i)=>ans.slice(i).reduce((a,b)=>a+b,0)/t*100);
     // find split index from select
     const splitSel=el.querySelector('.st-split');
     const si=splitSel?parseInt(splitSel.value):-1;
@@ -239,8 +238,7 @@ function drawWTP(id){
         data:{
             labels:prices.map(p=>'$'+p),
             datasets:[
-                {label:'WTP Frequency (%)',data:freq,backgroundColor:barColors,borderColor:borderColors,borderWidth:1,order:2,yAxisID:'y'},
-                {label:'Cumulative WTP (%)',data:cumR,type:'line',borderColor:'#f59e0b',backgroundColor:'rgba(245,158,11,0.1)',fill:true,tension:.4,pointRadius:3,pointBackgroundColor:'#f59e0b',borderWidth:2,order:1,yAxisID:'y'}
+                {label:'WTP Frequency (%)',data:freq,backgroundColor:barColors,borderColor:borderColors,borderWidth:1}
             ]
         },
         options:{
